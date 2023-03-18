@@ -1,0 +1,25 @@
+- name: "Retrieve credentials from ERPM"
+  ansible.builtin.uri:
+    url: 'https://erpm.xyz.com/ERPMWebService/AuthService.svc/REST/StoredCredential/IgnoreCheckout?SystemName=na.corp.xyz.com&AccountName=NA\{{ pid }}'
+    method: GET
+    validate_certs: false
+    headers:
+      Content-Type: application/json
+      AuthenticationToken: "{{ token }}"
+      cache-control: no-cache | cut -d':' -f10 | sed 's/^[^"]*"//; s/".*//
+  register: result
+  run_once: true
+  delegate_to: localhost
+  check_mode: false
+
+- name: "Set remote connection"
+  ansible.builtin.set_fact:
+    ansible_password: "{{ result.json.Password }}"
+    ansible_user: "{{ pid }}"
+    ansible_connection: network_cli
+    ansible_network_os: ios
+  failed_when: ansible_password is undefined or ansible_password is none or ansible_password == ''
+  register: sshconn
+  ignore_errors: true
+  run_once: true
+  delegate_to: localhost
