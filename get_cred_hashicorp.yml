@@ -1,0 +1,39 @@
+- name: Get Token to login into Hashicorp Vault
+  ansible.builtin.uri:
+    url: "https://iam-vault.security.xyz.com/v1/auth/approle/login"
+    method: POST
+    follow_redirects: all 
+    body_format: json  
+    headers:
+      Content-Type: application/json
+      Accept: application/json
+    body: { "role_id": "{{role_id}}","secret_id": "{{secret_id}}" }
+    use_proxy: no
+    validate_certs:  no
+    timeout: 30
+  register: login_data
+  run_once: true
+  delegate_to: localhost
+
+- name: Get updated snmpv3 method login password 
+  ansible.builtin.uri:
+    url: "https://iam-vault.security.xyz.com/v1/GlobalIT/data/network%2Fabc%2Fprod%2Fsnmp"
+    method: GET
+    follow_redirects: all 
+    body_format: json
+    use_proxy: no
+    validate_certs:  no
+    headers:
+      Content-Type: application/json
+      X-Vault-Token: "{{ login_data['json']['auth']['client_token'] }}"
+      Accept: "application/json"
+    status_code: [200, 201]
+  register: updated_cred
+  run_once: true
+  delegate_to: localhost
+
+- name: Set variables
+  ansible.builtin.set_fact:
+      snmp_password: "{{ updated_cred['json']['data']['data']['authPassword'] }}"
+  run_once: true
+  delegate_to: localhost
